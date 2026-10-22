@@ -41,8 +41,9 @@ def qft_split_step_circuit(
     mass: float = 1.0,
     hbar: float = 1.0,
     include_work_qubit: bool = True,
+    steps: int = 1,
 ) -> tuple[QuantumCircuit, QuantumRegister, QuantumRegister | None]:
-    """One second-order Strang step, ``V(dt/2) F^-1 T(dt) F V(dt/2)``.
+    """One or more second-order Strang steps, ``V(dt/2) F^-1 T(dt) F V(dt/2)``.
 
     QFTGate's sign convention is the conjugate of NumPy's ``fft``.  Because
     ``k**2`` is even, the kinetic diagonal is identical under that reversal.
@@ -53,17 +54,27 @@ def qft_split_step_circuit(
         raise ValueError("psi, x and potential require the same power-of-two length")
     if mass <= 0 or hbar <= 0:
         raise ValueError("mass and hbar must be positive")
+    if not isinstance(steps, (int, np.integer)) or steps < 1:
+        raise ValueError("steps must be a positive integer")
+    if not np.isfinite(psi).all() or not np.isfinite(x).all() or not np.isfinite(potential).all():
+        raise ValueError("inputs must be finite")
+    if np.linalg.norm(psi) == 0:
+        raise ValueError("initial state must have nonzero norm")
+    if len(x) < 2 or x[1] <= x[0] or not np.allclose(np.diff(x), x[1] - x[0]):
+        raise ValueError("x must be uniformly increasing")
     position = QuantumRegister(n, "x")
     work = QuantumRegister(1, "work") if include_work_qubit else None
     circuit = QuantumCircuit(position, work) if work else QuantumCircuit(position)
     circuit.initialize(psi / np.linalg.norm(psi), position)
     potential_phase = np.exp(-0.5j * dt * potential / hbar)
     kinetic_phase = np.exp(-0.5j * dt * hbar * wavenumbers(x) ** 2 / mass)
-    _diagonal(circuit, potential_phase, position)
-    circuit.append(QFTGate(n), position)
-    _diagonal(circuit, kinetic_phase, position)
-    circuit.append(QFTGate(n).inverse(), position)
-    _diagonal(circuit, potential_phase, position)
+    # Repeated coherent unitary evolution, with only one state initialization.
+    for _ in range(steps):
+        _diagonal(circuit, potential_phase, position)
+        circuit.append(QFTGate(n), position)
+        _diagonal(circuit, kinetic_phase, position)
+        circuit.append(QFTGate(n).inverse(), position)
+        _diagonal(circuit, potential_phase, position)
     return circuit, position, work
 
 

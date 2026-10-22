@@ -24,3 +24,12 @@ Initial static inspection of all three historical notebooks, followed by bounded
 Local tests compare Qiskit Statevector with the independent NumPy reference for free registers of 3, 4, and 5 qubits, constant potential, a step `x >= 0`, and a barrier `-0.5 <= x < 0.5`. All eight tests pass. At 5 qubits and `dt=0.03`, maximum phase-aligned amplitude error is below `7.1e-16`; probability error is below `3.4e-16`; norm remains one to floating-point precision. These are operator-equivalence checks for the discretized model, not a continuum error bound.
 
 The reference solver was retained: it already implements endpoint-excluded periodic FFT Strang evolution with the same units and phase convention. A barrier refinement study at 256 points showed decreasing fine-step differences, but does not establish full convergence. Finite periodic domains wrap; plots and interpretation must remain before return flux. For the illustrated barrier packet, substantial above-barrier spectral weight remains, so right-side probability is numerical transmission containing above-barrier components, not a clean tunnelling measurement.
+
+
+## Follow-up: multi-step statevector comparisons
+
+The Qiskit helper accepts `steps`, implementing a single initialization followed by repeated unitary Strang steps. Each corrected notebook now includes a small-register plot comparing **multi-step Qiskit** and **multi-step NumPy** probabilities. The large illustrative wavepacket trajectories continue to use the NumPy reference and must not be described as long Qiskit-circuit output.
+
+Two additional test methods cover 8-step statevector comparisons for free, step and barrier potentials and optional work-qubit behavior. The assistant independently checked equivalent Fourier matrix algebra against NumPy FFT evolution (3 and 5 position qubits, errors below 1e-13), but could not install Qiskit in this runtime; the new Qiskit tests require local verification in `qiskit-qc`.
+
+Three original February 2026 notebooks are retained unchanged in `archive/Notebooks/`, including large historical outputs, for provenance rather than execution.

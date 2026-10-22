@@ -47,3 +47,37 @@ class QiskitSplitStepTests(unittest.TestCase):
     def test_norm_preserved(self):
         actual, _, _ = self._one_step(lambda x: np.where(x >= 0, 1.5, 0.0))
         self.assertAlmostEqual(float(np.sum(np.abs(actual) ** 2)), 1.0, places=14)
+
+    def test_multistep_qft_matches_numpy(self):
+        """Eight coherent Strang steps for free, step and barrier potentials."""
+        for n in (3, 5):
+            x = periodic_grid(n)
+            psi = gaussian_packet(x, -0.5, 0.6, 2.0)
+            for v in (
+                np.zeros_like(x),
+                np.where(x >= 0, 1.5, 0.0),
+                np.where((x >= -0.5) & (x < 0.5), 3.0, 0.0),
+            ):
+                qc, position, work = qft_split_step_circuit(psi, x, v, 0.04, steps=8)
+                actual, leakage = statevector_position_and_work(qc, position, work)
+                expected = split_step(psi, x, v, 0.04, 8)
+                amp_error, probability_error = phase_aligned_errors(actual, expected)
+                self.assertLess(amp_error, 5e-12)
+                self.assertLess(probability_error, 5e-12)
+                self.assertAlmostEqual(float(sum(abs(actual)**2)), 1.0, places=12)
+                self.assertLess(leakage, 1e-15)
+
+    def test_optional_work_qubit_and_invalid_step_count(self):
+        x = periodic_grid(3)
+        psi = gaussian_packet(x, -0.5, 0.6, 1.0)
+        v = np.where(x >= 0, 1.5, 0.0)
+        qc, position, work = qft_split_step_circuit(
+            psi, x, v, 0.04, include_work_qubit=False, steps=3
+        )
+        self.assertIsNone(work)
+        actual, leakage = statevector_position_and_work(qc, position, work)
+        expected = split_step(psi, x, v, 0.04, 3)
+        self.assertLess(phase_aligned_errors(actual, expected)[0], 5e-12)
+        self.assertEqual(leakage, 0.0)
+        with self.assertRaises(ValueError):
+            qft_split_step_circuit(psi, x, v, 0.04, steps=0)
