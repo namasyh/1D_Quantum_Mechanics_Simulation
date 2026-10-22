@@ -8,6 +8,14 @@ A self-directed educational exploration of 1D, single-particle Schrödinger evol
 
 The time-independent Hamiltonian is `H = T + V`, with `T = -ħ²∂²/(2m∂x²)`. All corrected examples set `m=ħ=1`, use a periodic grid `x_j∈[-L/2,L/2)` with `N=2^n`, and normalize amplitudes with `Σ_j|ψ_j|²=1`. `sigma` is the probability-density standard deviation and the travelling factor is `exp(i k0 x)`. Fourier labels are `2π fftfreq(N, dx)`, so the upper half encodes negative wave numbers. Evolution is the symmetric **second-order Strang split** `exp(-iVdt/2ħ) F⁻¹ exp(-iTdt/ħ) F exp(-iVdt/2ħ)`. Potential and kinetic diagonal phases both carry the physical negative sign for positive time.
 
+## Guided notebook lessons
+
+The three corrected notebooks now function as **worked tutorials** for readers familiar with basic quantum mechanics and qubits. Each explains the physical model, finite-grid encoding, Gaussian initialization, Fourier/QFT conventions, potential and kinetic phase gates, numerical results, and what the Qiskit-versus-NumPy tests can and cannot establish.
+
+**Recommended study sequence:** [1. Free wavepacket](Notebooks/time_evolution_free_particle.ipynb) → [2. Step-potential scattering](Notebooks/Step_potential.ipynb) → [3. Finite-barrier transmission and tunneling caveats](Notebooks/quantum_tunnelling.ipynb).
+
+The tutorial explanations are written alongside the previously validated code; the Python code cells and numerical implementations were not changed by this documentation-focused update. Run them in the existing `qiskit-qc` kernel. The original exploratory notebooks are preserved separately under `archive/Notebooks/`.
+
 ## Corrected notebooks and historical originals
 
 | Case | Notebook | Status |
