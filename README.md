@@ -2,19 +2,19 @@
 
 A self-directed educational exploration of 1D, single-particle Schrödinger evolution using Qiskit circuits. The notebooks study free Gaussian wavepackets, a step potential, and a finite barrier. **QFT/split-operator methods are established approaches; this is not a new simulation algorithm.**
 
-> **Physics status:** The historical notebooks and figures have not yet passed independent statevector validation. Initial inspection identified an aliased incoming momentum, discrepancies between potential phase masks and plots, and kinetic/potential phase-convention questions. See [the audit](docs/PHYSICS_AUDIT.md). The added NumPy reference has its own passing unit tests; this does **not** validate the original Qiskit notebooks.
+> **Physics status:** Corrected notebook circuits now pass local Qiskit Statevector checks against the independent NumPy split-step reference. This validates the chosen finite, periodic-grid discretization—not continuum accuracy, hardware execution, or quantum advantage. See [the audit](docs/PHYSICS_AUDIT.md).
 
 ## Model and numerical method
 
-The time-independent Hamiltonian is `H = T + V`, with `T = -ħ²∂²/(2m∂x²)`. Evolution is `U(dt) = exp(-i H dt / ħ)`. The QFT changes between position and momentum representations, in which potential and kinetic operators are diagonal respectively. A symmetric **second-order Strang split** is `exp(-iVdt/2ħ) F⁻¹ exp(-iTdt/ħ) F exp(-iVdt/2ħ)`. This formula describes the *new NumPy reference*; it is **not** a claim about the historical Qiskit circuits' actual implementation. Fourier grids use periodic boundaries, so edge wraparound is possible.
+The time-independent Hamiltonian is `H = T + V`, with `T = -ħ²∂²/(2m∂x²)`. All corrected examples set `m=ħ=1`, use a periodic grid `x_j∈[-L/2,L/2)` with `N=2^n`, and normalize amplitudes with `Σ_j|ψ_j|²=1`. `sigma` is the probability-density standard deviation and the travelling factor is `exp(i k0 x)`. Fourier labels are `2π fftfreq(N, dx)`, so the upper half encodes negative wave numbers. Evolution is the symmetric **second-order Strang split** `exp(-iVdt/2ħ) F⁻¹ exp(-iTdt/ħ) F exp(-iVdt/2ħ)`. Potential and kinetic diagonal phases both carry the physical negative sign for positive time.
 
 ## Original notebooks
 
 | Case | Notebook | Status |
 |---|---|---|
-| Free packet | [time_evolution_free_particle.ipynb](Notebooks/time_evolution_free_particle.ipynb) | Original visualizations retained; detailed audit pending |
-| Step potential | [Step_potential.ipynb](Notebooks/Step_potential.ipynb) | Phase mask currently differs from plotted step |
-| Finite barrier | [quantum_tunnelling.ipynb](Notebooks/quantum_tunnelling.ipynb) | Phase mask differs from plotted barrier; tunneling claim unverified |
+| Free packet | [time_evolution_free_particle.ipynb](Notebooks/time_evolution_free_particle.ipynb) | Validated one-step QFT/Statevector circuit |
+| Step potential | [Step_potential.ipynb](Notebooks/Step_potential.ipynb) | Exact `x >= 0` phase mask and plotted mask |
+| Finite barrier | [quantum_tunnelling.ipynb](Notebooks/quantum_tunnelling.ipynb) | Exact `-0.5 <= x < 0.5` mask; no unsupported tunnelling claim |
 
 Preserved original free-particle illustrations (historical, not proof of physical accuracy):
 
@@ -22,7 +22,7 @@ Preserved original free-particle illustrations (historical, not proof of physica
 |:---:|:---:|:---:|:---:|
 | ![](images/image.png) | ![](images/image-1.png) | ![](images/image-2.png) | ![](images/image-3.png) |
 
-## Reproduce baseline checks
+## Validation and reproduction
 
 Python 3 with NumPy suffices for the baseline tests. `requirements.txt` includes optional Qiskit dependencies for opening and eventually validating the original notebooks (not yet compatibility-tested in a clean Qiskit environment).
 
@@ -33,14 +33,18 @@ python -m pip install -r requirements.txt
 python -m unittest discover -s tests -v
 ```
 
-The baseline [reference_split_step.py](reference_split_step.py) uses an FFT-grid Strang split with default `m=ħ=1`. Use a uniform grid **without a repeated endpoint**: `np.linspace(-4, 4, 64, endpoint=False)`. Wavefunction amplitudes satisfy `sum(|ψ_j|²)=1`; the Gaussian's `sigma` denotes the probability-density standard deviation. Tests check analytic free plane-wave phase, constant potential, normalization, norm preservation, and reversibility.
+Tested locally: Python environment with NumPy 2.4.4, Matplotlib 3.10.8, Qiskit 2.6.0, and ipykernel 7.2.0. The independent [reference_split_step.py](reference_split_step.py) required no physics change: it already uses the selected endpoint-excluded FFT grid, negative phase, and Strang split. [qiskit_split_step.py](qiskit_split_step.py) implements the same one-step operator using QFT and explicit diagonal gates; it contains no IBM credentials, sampling, or arithmetic ancilla.
 
-**Limitations:** Sampled circuit histograms have finite-shot noise. The original implementations need explicit bit ordering, Fourier/momentum sign, potential-mask and statevector comparison checks. Transmission beyond a potential barrier is not by itself proof of quantum tunneling. No real-hardware, quantum-advantage, novel-algorithm, or publication claims are made.
+`python -m unittest discover -s tests -v` passed 8 tests: analytic free plane wave, constant potential, normalization/reversal, free QFT steps for 3–5 qubits, step/barrier QFT steps, and work-qubit reset. In the local 5-qubit one-step comparisons (`dt=0.03`), maximum global-phase-aligned amplitude errors were `6.3e-16`–`7.1e-16`; maximum probability errors were `2.5e-16`–`3.3e-16`; norm was 1 to floating-point precision; work-qubit `|1>` probability was 0. These values compare two implementations of the same finite-grid operator, not the continuum solution.
+
+For a 256-point barrier check (`L=16`, `x0=-4`, `sigma=0.5`, `k0=2.5`, `V0=6`, width 1, `t=2`), reducing `dt` from 0.02 to 0.01 changed maximum amplitude by `5.86e-3` and probability by `1.57e-3`; 0.01 to 0.005 changed them by `1.37e-3` and `2.10e-4`. This is expected product-formula refinement, not a proof of convergence in space or time. The packet has mean discrete kinetic energy 3.625 but about 0.200 of its discrete momentum probability lies above `V0`; observed right-side probability therefore cannot be identified as purely sub-barrier tunnelling. Periodic boundaries also wrap outgoing probability: a free 64-point `L=8` packet centred at `-2.5` with `k0=3` has its modal index return to `x=-0.625` by `t=2.5` after reaching the right side.
+
+**Limitations:** The QFT method represents a periodic, spectral discretization. Avoid interpreting late-time edge population after wraparound. Diagonal gates are locally statevector-simulated here; no compilation cost, noise, shots, or real-hardware behavior has been validated. Transmission beyond the barrier is not by itself proof of quantum tunnelling, especially for a packet with above-barrier spectral weight. No quantum-advantage, novel-algorithm, publication, or hardware-execution claims are made.
 
 ## Attribution
 
 - Giuliano Benenti and Giuliano Strini, [*Quantum simulation of the single-particle Schrödinger equation*](https://arxiv.org/abs/0709.1704) (2008): established quantum simulation methods.
 - Mohamed Abouelela, [*Quantum Simulation of the Schrödinger Equation using IBM's Quantum Computers*](https://fount.aucegypt.edu/capstone/20/) (2020): related Qiskit educational exploration.
-- Lohit Potnuru, *Simulate Quantum Particles with Python and Qiskit* (2022): cited educational influence; source URL still to be verified.
+- Lohit Potnuru, *Simulate Quantum Particles with Python and Qiskit* (2022): educational influence; citation retained from the original notebooks.
 
 This project represents independent study/adaptation of pre-existing methods to illustrative 1D potentials. Validation of Qiskit implementations remains future work.

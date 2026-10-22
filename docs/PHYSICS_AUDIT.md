@@ -1,6 +1,6 @@
 # Preliminary physics audit (2026-10-22)
 
-Static inspection of `Step_potential.ipynb` and `quantum_tunnelling.ipynb`. The very large free-particle notebook was not fully retrieved, inspected, or executed. This is **not** Qiskit statevector validation. Original notebooks and figures remain untouched.
+Initial static inspection of all three historical notebooks, followed by bounded local Qiskit Statevector validation of their corrected replacements. No hardware runs occurred.
 
 1. **Aliasing:** Both inspected notebooks use 64 points from -0.5 to 4 inclusive and `exp(300j*x)`. Thus dx = 4.5/63 ≈ 0.07143, Nyquist k = π/dx ≈ 43.98, and k=300 aliases to approximately 36.11. Fix grid and physical parameters together.
 2. **Gaussian width:** The actual amplitude envelope is `exp[-0.5*(x-x0)^2/0.016]`. Its amplitude-envelope Gaussian scale is sqrt(0.016) ≈ 0.1265, corresponding to probability-density standard deviation sqrt(0.008) ≈ 0.0894 on a broad grid—not the claimed sigma=0.4. The discrete normalization is mathematically reasonable.
@@ -17,4 +17,10 @@ Static inspection of `Step_potential.ipynb` and `quantum_tunnelling.ipynb`. The 
 - Reconcile positive/negative phase signs, QFT direction, signed momentum, numerical convergence, boundary wraparound and energy relative to barrier height.
 - Only then regenerate representative figures and update scientific claims. Probability beyond a barrier alone does not establish tunneling.
 
-The added unit tests check only the standalone NumPy reference and do not show Qiskit agreement, hardware results, or quantum advantage.
+## Correction and validation outcome
+
+`qiskit_split_step.py` fixes the selected convention: `m=hbar=1`, `N=2^n`, `x in [-L/2,L/2)`, FFT-ordered signed wave numbers, and a Strang step with negative potential and kinetic phases. Qiskit's position-register bit order is explicitly treated as the little-endian integer index `j`. The QFT kinetic diagonal is even in signed `k`, so QFT sign reversal does not alter `k^2`. The former arithmetic-ancilla kinetic network was replaced by an explicit diagonal, avoiding ambiguous phase decomposition; an optional untouched work qubit has `P(|1>)=0` in every Statevector check.
+
+Local tests compare Qiskit Statevector with the independent NumPy reference for free registers of 3, 4, and 5 qubits, constant potential, a step `x >= 0`, and a barrier `-0.5 <= x < 0.5`. All eight tests pass. At 5 qubits and `dt=0.03`, maximum phase-aligned amplitude error is below `7.1e-16`; probability error is below `3.4e-16`; norm remains one to floating-point precision. These are operator-equivalence checks for the discretized model, not a continuum error bound.
+
+The reference solver was retained: it already implements endpoint-excluded periodic FFT Strang evolution with the same units and phase convention. A barrier refinement study at 256 points showed decreasing fine-step differences, but does not establish full convergence. Finite periodic domains wrap; plots and interpretation must remain before return flux. For the illustrated barrier packet, substantial above-barrier spectral weight remains, so right-side probability is numerical transmission containing above-barrier components, not a clean tunnelling measurement.
