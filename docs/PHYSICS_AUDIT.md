@@ -30,6 +30,6 @@ The reference solver was retained: it already implements endpoint-excluded perio
 
 The Qiskit helper accepts `steps`, implementing a single initialization followed by repeated unitary Strang steps. Each corrected notebook now includes a small-register plot comparing **multi-step Qiskit** and **multi-step NumPy** probabilities. The large illustrative wavepacket trajectories continue to use the NumPy reference and must not be described as long Qiskit-circuit output.
 
-Two additional test methods cover 8-step statevector comparisons for free, step and barrier potentials and optional work-qubit behavior. The assistant independently checked equivalent Fourier matrix algebra against NumPy FFT evolution (3 and 5 position qubits, errors below 1e-13), but could not install Qiskit in this runtime; the new Qiskit tests require local verification in `qiskit-qc`.
+Two additional test methods cover 8-step statevector comparisons for free, step and barrier potentials and optional work-qubit behavior. In the existing `qiskit-qc` environment (Qiskit 2.6.0), all 10 tests passed; notebook multi-step comparisons reached maximum amplitude errors below `5.1e-15`, probability errors below `2.6e-15`, and zero work-qubit leakage.
 
 Three original February 2026 notebooks are retained unchanged in `archive/Notebooks/`, including large historical outputs, for provenance rather than execution.
